@@ -1,0 +1,18 @@
+include MANIFEST.in
+include requirements.txt
+include *.json
+include *.md
+include *.py
+include *.txt
+recursive-include hood_integration *.css
+recursive-include hood_integration *.csv
+recursive-include hood_integration *.html
+recursive-include hood_integration *.ico
+recursive-include hood_integration *.js
+recursive-include hood_integration *.json
+recursive-include hood_integration *.md
+recursive-include hood_integration *.png
+recursive-include hood_integration *.py
+recursive-include hood_integration *.svg
+recursive-include hood_integration *.txt
+recursive-exclude hood_integration *.pyc
