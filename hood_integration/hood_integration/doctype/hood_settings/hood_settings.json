@@ -1,0 +1,82 @@
+{
+ "actions": [],
+ "autoname": "api",
+ "creation": "2023-06-02 22:11:24.305816",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "credentials",
+  "key",
+  "secret_key",
+  "options",
+  "number_of_days_back"
+ ],
+ "fields": [
+  {
+   "fieldname": "credentials",
+   "fieldtype": "Section Break",
+   "label": "Credentials"
+  },
+  {
+   "fieldname": "key",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Key",
+   "reqd": 1
+  },
+  {
+   "fieldname": "secret_key",
+   "fieldtype": "Data",
+   "label": "Secret key",
+   "reqd": 1
+  },
+  {
+   "fieldname": "options",
+   "fieldtype": "Section Break",
+   "label": "Options"
+  },
+  {
+   "default": "0",
+   "fieldname": "number_of_days_back",
+   "fieldtype": "Int",
+   "label": "Number of days back",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2023-06-02 22:13:17.425488",
+ "modified_by": "Administrator",
+ "module": "Hood Integration",
+ "name": "Hood Settings",
+ "naming_rule": "Set by user",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Administrator",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
