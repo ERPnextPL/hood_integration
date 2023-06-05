@@ -1,5 +1,5 @@
 import frappe
-from datetime import datetime
+from datetime import datetime, timedelta
 from hood_integration.hood_integration.scheduler.Helper.jobs import add_comment_to_job
 
 
@@ -7,14 +7,13 @@ class Products:
     def __init__(self):
         self.products = None
 
-    def product_exist(self,product, log):
-        ean = product["eans"]
-        customer = frappe.db.get_value('Item', {'item_code': ean[0]}, 'name')
+    def product_exist(self,ean, log):
+        customer = frappe.db.get_value('Item', {'item_code': ean}, 'name')
         if customer:
             return True
         else:
             add_comment_to_job(
-                log, f"Product with ean: '{ean[0]}' does not exist in ErpNext. Adding new Item")
+                log, f"Product with ean: '{ean}' does not exist in ErpNext. Adding new Item")
             return False
 
     def __brand_exist(self,name):
@@ -23,6 +22,12 @@ class Products:
             return True
         else:
             return False
+        
+    def __add_days_to_date(po_date, days_to_add:int):
+        datetime_obj = datetime.strptime(po_date, "%Y-%m-%d")
+        new_date = datetime_obj + timedelta(days=days_to_add)
+        new_date_str = new_date.strftime("%Y-%m-%d")
+        return new_date_str    
 
     def __create_brand(self,name):
         brand = frappe.get_doc({
@@ -33,45 +38,40 @@ class Products:
 
 
     def create_product(self, item, log):
-        eans = item["eans"]
+        ean = item.find("ean").text
         
-        name_length = len(item["title"])
-        title = item["title"]
+        name_length = len(item.find("prodName").text)
+        title = item.find("prodName").text
         if name_length > 140:
             name = title[:140]
         else:
             name = title
             
-        if not self.__brand_exist(item["manufacturer"]):
-           self.__create_brand(item["manufacturer"])
+        if not self.__brand_exist("Meblito"):
+           self.__create_brand("Meblito")
         
         product = frappe.get_doc({
             "doctype": "Item",
-            "item_code": eans[0],
+            "item_code": ean,
             "item_group": "Produkty",
             "item_name": name,
-            "brand": item["manufacturer"],
+            "brand": "Meblito",
             "stock_uom": "szt.",
             "is_purchase_item": 1,
             "purchase_uom": "szt.",
             "sales_uom": "szt.",
-            "is_sales_item": 1,
-            "image": item["main_picture"]
+            "is_sales_item": 1
         })
         product.insert()
 
-    def get_sales_roder_item_structure(self,item,count):
+    def get_sales_order_item_structure(self,item,count,po_date):
         
-        product = item["product"]
-        ean = product["eans"][0]
+        product = item.find("item")
+        ean = product.find("ean").text
         
-        date = item["delivery_time_expires_iso"]
-        datetime_obj = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
-        delivery_date = datetime_obj.strftime("%Y-%m-%d")
+        delivery_days = frappe.get_doc("Item",{"item_code": ean},"lead_time_days")
+        delivery_date = self.__add_days_to_date(po_date,int(delivery_days))
         
-        if item["price"] is not None:
-            price = item["price"]
-            price_decimal = price / 100
             
         count += 1
         
@@ -80,6 +80,6 @@ class Products:
             "idx":str(count),
             "item_code": ean,
             "delivery_date": delivery_date,
-            "qty": 1,
-            "rate": price_decimal
+            "qty": int(product.find("quantity").text),
+            "rate": float(product.find("price").text)
         }

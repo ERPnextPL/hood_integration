@@ -12,7 +12,7 @@ class Customer:
     def __get_contry_name_by_code(self, contry_code):
         return str(CountryInfo(contry_code).name()).lower().capitalize()
 
-    def __get_currency_by_code(self, contry_code):
+    def get_currency_by_code(self, contry_code):
         currencyList = CountryInfo(contry_code).currencies()
         if isinstance(currencyList, list):
             return str(currencyList[0]).upper()
@@ -59,11 +59,11 @@ class Customer:
             return str(territory.name)
 
     def __get_customer_group(self):
-        customer_group = frappe.db.get_value('Customer Group', {'name': 'Kaufland.de'}, 'name')
+        customer_group = frappe.db.get_value('Customer Group', {'name': 'Hood.de'}, 'name')
         if customer_group is not None:
             return str(customer_group)
         else:
-            group = frappe.get_doc({ "doctype": "Customer Group", "name": "Kaufland.de", "customer_group_name": "Kaufland.de" })
+            group = frappe.get_doc({ "doctype": "Customer Group", "name": "Hood.de", "customer_group_name": "Hood.de" })
             group.insert()
             return str(group.name)
 
@@ -81,23 +81,22 @@ class Customer:
             add_comment_to_job(log, f"{address_type} address '{address_id}' does not exist in ErpNext. Adding new address")
             return False
 
-    def create_customer(self,data, log):
-        buyer = data["buyer"]
-        biling_adrress = data["billing_address"]
-        shipping_address = data["shipping_address"]
+    def create_customer(self,order, log):
+        buyer = order.find("buyer")
+        shipping_address = order.find("shipAddress")
 
-        if buyer is not None and biling_adrress is not None and shipping_address is not None:
-            country_code = str(biling_adrress["country"]).lower()
-            country_currency = self.__get_currency_by_code(country_code)
+        if buyer is not None and shipping_address is not None:
+            country_code = str(buyer.find("countryTwoDigit").text).lower()
+            country_currency = self.get_currency_by_code(country_code)
 
             customer = frappe.get_doc({
                 "doctype": "Customer",
-                "customer_name": biling_adrress["first_name"] + " " + biling_adrress["last_name"],
-                "mobile_no": shipping_address["phone"],
-                "email_id": buyer["email"],
+                "customer_name": buyer.find("firstName").text + " " + buyer.find("lastName").text,
+                "mobile_no": buyer.find("phone").text,
+                "email_id": buyer.find("email").text,
                 "language": country_code,
                 "default_currency": country_currency,
-                "customer_type": self.__get_customer_type(biling_adrress["company_name"]),
+                "customer_type": self.__get_customer_type(""),
                 "customer_group": self.__get_customer_group(),
                 "territory": self.__get_territory(self.__get_contry_name_by_code(country_code))
             })
@@ -105,23 +104,27 @@ class Customer:
 
             if frappe.db.exists("Customer", customer.name):
                 # create address
-                if biling_adrress is not None:
-                    country_code = str(biling_adrress["country"]).lower()
+                if buyer is not None:
+                    country_code = str(buyer.find("countryTwoDigit").text).lower()
                     country_name = self.__get_contry_name_by_code(country_code)
-                    address_title = biling_adrress["first_name"] + " " + biling_adrress["last_name"]
+                    address_title = buyer.find("firstName").text + " " + buyer.find("lastName").text
                     if not self.__country_exist(country_name, log):
                         self.__create_country(country_name, country_code)
                     if not self.__address_exist(address_title, "Billing", log):
-                        self.__create_address(biling_adrress, "Billing", country_name, country_code, buyer["email"], customer)
+                        self.__create_address(buyer, "Billing", country_name, country_code, buyer.find("email").text, customer)
 
                 if shipping_address is not None:
-                    country_code = str(shipping_address["country"]).lower()
+                    country_code = str(shipping_address.find("countryTwoDigit").text).lower()
                     country_name = self.__get_contry_name_by_code(country_code)
-                    address_title = shipping_address["first_name"] + " " + shipping_address["last_name"]
+                    address_title = shipping_address.find("firstName").text + " " + shipping_address.find("lastName").text
                     if not self.__country_exist(country_name, log):
                         self.__create_country(country_name, country_code)
                     if not self.__address_exist(address_title, "Shipping", log):
-                        self.__create_address(shipping_address, "Shipping", country_name, country_code, "", customer)
+                        if shipping_address.find("email") is not None:
+                            email = shipping_address.find("email").text
+                        else:
+                            email = ""
+                        self.__create_address(shipping_address, "Shipping", country_name, country_code,email, customer)
                 
                 return str(customer.name)
             else:
@@ -134,6 +137,11 @@ class Customer:
         shipping = 0
         is_company_address = 0
         title = ""
+        phone = ""
+        if addressData.find("phone") is not None:
+            phone = addressData.find("phone").text
+        else:
+            phone = ""
 
         if address_type == "Billing":
             primary = 1
@@ -146,23 +154,22 @@ class Customer:
             # else:
             #   is_company_address = 0
             #   title = addressData["first_name"] + " " + addressData["last_name"]
-            title = addressData["first_name"] + " " + addressData["last_name"]
+            title = addressData.find("firstName").text + " " + addressData.find("lastName").text
         elif address_type == "Shipping":
             shipping = 1
-            title = addressData["first_name"] + " " + addressData["last_name"]
+            title = addressData.find("firstName").text + " " + addressData.find("lastName").text
 
         address = frappe.get_doc({
             "doctype": "Address",
             "address_title": title,
             "address_type": address_type,
-            "address_line1": addressData["street"],
-            "address_line2": addressData["house_number"],
-            "city": addressData["city"],
+            "address_line1": addressData.find("address").text,
+            "city": addressData.find("city").text,
             "county": country_code,
             "country": country_name,
-            "pincode": addressData["postcode"],
+            "pincode": addressData.find("zip").text,
             "email_id": email,
-            "phone": addressData["phone"],
+            "phone": phone,
             "is_primary_address": primary,
             "is_shipping_address": shipping,
             "links": [{

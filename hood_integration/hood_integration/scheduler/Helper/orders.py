@@ -5,7 +5,7 @@ import hmac
 import hashlib
 import urllib.parse
 import frappe
-from datetime import datetime
+from datetime import datetime, timedelta
 from hood_integration.hood_integration.doctype.hood_settings.hood_settings import HoodCredentials
 from hood_integration.hood_integration.scheduler.Helper.exchange_rates import ExchangeRates
 from hood_integration.hood_integration.scheduler.Helper.erpnext.selling import Selling
@@ -13,45 +13,95 @@ from hood_integration.hood_integration.scheduler.Helper.erpnext.products import 
 from hood_integration.hood_integration.scheduler.Helper.erpnext.payment import Payment
 from hood_integration.hood_integration.scheduler.Helper.erpnext.customer import Customer
 from hood_integration.hood_integration.scheduler.Helper.jobs import add_comment_to_job, set_job_async
+import xml.etree.ElementTree as ET
 
 
-def get_headers(url: str, timestamp: int):
-    creditionals = HoodCredentials()
-    return {
-        'Accept': 'application/json',
-        'Shop-Client-Key': creditionals.key,
-        'Shop-Timestamp': str(timestamp),
-        'Shop-Signature': sign_request('GET', url, '', timestamp, creditionals.key_secret)
-    }
+def createContentStringToGetOrderList(from_date: datetime, to_date: datetime):
+    keys = HoodCredentials()
+    name = keys.key
+    password = hash_md5(keys.key_secret)
+    # root element
+    root = ET.Element("api")
+    root.set("type", "public")
+    root.set("version", "2.0")
+    root.set("user", name)
+    root.set("password", password)
+
+    # child elements and set their values
+    account_name = ET.SubElement(root, "accountName")
+    account_name.text = name
+
+    account_pass = ET.SubElement(root, "accountPass")
+    account_pass.text = password
+
+    function = ET.SubElement(root, "function")
+    function.text = "orderList"
+
+    date_range = ET.SubElement(root, "dateRange")
+    date_range_type = ET.SubElement(date_range, "type")
+    date_range_type.text = "orderDate"
+    start_date = ET.SubElement(date_range, "startDate")
+    start_date.text = from_date.strftime("%m/%d/%Y")
+    end_date = ET.SubElement(date_range, "endDate")
+    end_date.text = to_date.strftime("%m/%d/%Y")
+
+    order_id = ET.SubElement(root, "orderID")
+    order_id.text = ""
+
+    # Create the XML string
+    xml_string = ET.tostring(root, encoding="utf-8",
+                             method="xml").decode("utf-8")
+
+    return xml_string
+
+def CreateContentStringToGetItemDetail(itemId):
+    keys = HoodCredentials()
+    name = keys.key
+    password = hash_md5(keys.key_secret)
+    root = ET.Element("api")
+    root.set("type", "public")
+    root.set("version", "2.0")
+    root.set("user", name)
+    root.set("password", password)
+
+    account_name = ET.SubElement(root, "accountName")
+    account_name.text = name
+    account_pass = ET.SubElement(root, "accountPass")
+    account_pass.text = password
+    function = ET.SubElement(root, "function")
+    function.text = "itemDetail"
+    item_id = ET.SubElement(root, "itemID")
+    item_id.text = itemId
+    return ET.tostring(root, encoding="utf-8", method="xml").decode()
 
 
-def sign_request(method, uri, body, timestamp, secret_key):
-    plain_text = "\n".join([method, uri, body, str(timestamp)])
-    digest_maker = hmac.new(secret_key.encode(), None, hashlib.sha256)
-    digest_maker.update(plain_text.encode())
-    return digest_maker.hexdigest()
+
+def hash_md5(string):
+    md5_hash = hashlib.md5()
+    md5_hash.update(string.encode('utf-8'))
+    hashed_string = md5_hash.hexdigest()
+    return hashed_string
+
 
 #################################################################################################
 
+def get_list_id(xml_str):
+    root = ET.fromstring(xml_str)
+    order_ids = []
+    for order in root.findall('.//order'):
+        for item in order.findall('.//details'):
+            item_id = item.find('orderID').text
+            order_ids.append(item_id)
+    return order_ids
 
-def get_orders_form_kaufland(dateFrom: str, log):
 
-    params = { 'fulfillment_type': 'fulfilled_by_merchant',
-              'ts_created_from_iso': dateFrom,'limit':100}
-    uri = f'https://sellerapi.kaufland.com/v2/orders?{urllib.parse.urlencode(params)}'
-    timestamp = int(time.time())
+def get_orders_form_hood(dateFrom: datetime, dateTo: datetime):
+    uri = f'https://www.hood.de/api.htm'
     try:
-        response = requests.get(uri, headers=get_headers(uri, timestamp))
+        response = requests.post(
+            uri, data=createContentStringToGetOrderList(dateFrom, dateTo))
         response.raise_for_status()
-        data = json.loads(response.content.decode("utf-8"))
-        if data != None:
-            try:
-                orders = [id_order["id_order"] for id_order in data["data"]]
-                return orders
-            except KeyError as e:
-                add_comment_to_job(log, f"Error: {e}")
-        else:
-            return None
+        return response.content.decode("utf-8")
     except requests.exceptions.HTTPError as e:
         add_comment_to_job(log, f"HTTP error: {e}")
     except requests.exceptions.RequestException as e:
@@ -60,28 +110,36 @@ def get_orders_form_kaufland(dateFrom: str, log):
 #################################################################################################
 
 
-def get_order_form_kaufland_by_id(id_order: str, log):
-    params = {'embedded': 'order_invoices'}
-    uri = f'https://sellerapi.kaufland.com/v2/orders/{id_order}?{urllib.parse.urlencode(params)}'
-    timestamp = int(time.time())
-    response = requests.get(uri, headers=get_headers(uri, timestamp))
-    data = json.loads(response.content.decode("utf-8"))
-    if data != None:
-        add_comment_to_job(log, f"Order[{id_order}]: {str(data)}")
-        if not order_exist(id_order, log):
-            set_job_async(jobName=f"ErpNext.CreateNewSalesOrder",
-                          methodPath=f"hood_integration.hood_integration.scheduler.Helper.orders.create_order_from_kaufland_data", queue="default", data=data["data"], log=log)
+def get_order_form_hood_by_id(order, log = None):
+    
+    idOrder = order.find('details').find("orderID").text
+    if not order_exist(idOrder, log):
+        set_job_async(jobName=f"ErpNext.CreateNewSalesOrder",
+                      methodPath=f"hood_integration.hood_integration.scheduler.Helper.orders.create_order_from_hood_data", queue="default", data=order, log=log)
     else:
-        add_comment_to_job(log, f"No data for order {id_order}")
+        add_comment_to_job(log, f"No data for order {idOrder}")    
+   
 
 #################################################################################################
 
 
-def create_order_from_kaufland_data(data, log):
-    buyer = data["buyer"]
-    id_order = data["id_order"]
-    date = data["ts_created_iso"]
-    datetime_obj = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
+def create_order_from_hood_data(order, log=None):
+    uri = f'https://www.hood.de/api.htm'
+    details = order.find('details')
+    idOrder = details.find("orderID").text
+
+    try:
+        response = requests.post(uri, data=CreateContentStringToGetItemDetail(idOrder))
+        data = response.content.decode("utf-8")
+        root = ET.fromstring(data)
+    except requests.exceptions.HTTPError as e:
+        add_comment_to_job(log, f"HTTP error: {e}")
+    except requests.exceptions.RequestException as e:
+        add_comment_to_job(log, f"Request error: {e}")
+        
+    buyer = order.find("buyer")
+    date = details.find('date').text[5:-2]
+    datetime_obj = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
     po_date = datetime_obj.strftime("%Y-%m-%d")
 
     # price list section
@@ -89,42 +147,45 @@ def create_order_from_kaufland_data(data, log):
 
     # customer section
     customer = Customer()
-    if not customer.customer_exist(buyer["email"], log):
-        customer_name = customer.create_customer(data, log)
+    if not customer.customer_exist(buyer.find("email").text, log):
+        customer_name = customer.create_customer(order, log)
     else:
-        customer_name = customer.get_customer_name(buyer["email"])
-    
+        customer_name = customer.get_customer_name(buyer.find("email").text)
+
     # product section
     products = Products()
     sales_order_items = []
-    order_items = data["order_units"]
+    order_items = order.findall('.//orderItems')
     for item in order_items:
-        product = item["product"]
-        if not products.product_exist(product, log):
+        product = item.find("item")
+        if not products.product_exist(product.find("ean").text, log):
             products.create_product(product, log)
-        sales_order_items.append(products.get_sales_roder_item_structure(item, len(sales_order_items)))
-    
-    # first unit
-    status_order = order_items[0]["status"]
+        sales_order_items.append(
+            products.get_sales_order_item_structure(item, len(sales_order_items),po_date))
 
-    # Payment terms
+    # # first unit
+    status_order = details.find("orderStatusActionSeller").text
+
+    # # Payment terms
     payment = Payment()
 
     # Exchange Rates
     exchange_rates = ExchangeRates()
-    eur = exchange_rates.get_currancy_rate(order_items[0]["currency"])
-    
+    country_code = str(buyer.find("countryTwoDigit").text).lower()
+    currency = customer.get_currency_by_code(country_code)
+    eur = exchange_rates.get_currancy_rate(currency)
+
     # order section
     order = frappe.get_doc({
         "doctype": 'Sales Order',
-        "naming_series": "SO-KAUF-.YYYY.-",
+        "naming_series": "SO-HOOD-.YYYY.-",
         "customer": customer_name,
         "order_type": "Sales",
-        "po_no": id_order,
+        "po_no": idOrder,
         "po_date": po_date,
         "transaction_date": po_date,
         "selling_price_list": selling.get_price_list(),
-        "currency": order_items[0]["currency"],
+        "currency": currency,
         "conversion_rate": eur,
         "orderstatus": status_order,
         "items": sales_order_items,
@@ -136,13 +197,15 @@ def create_order_from_kaufland_data(data, log):
             "doctype": "Payment Schedule",
         }]
     })
-    
+
     try:
         order.insert()
-        add_comment_to_job(log, f"Sales order [{id_order}] added to {order.name}")
+        add_comment_to_job(
+            log, f"Sales order [{idOrder}] added to {order.name}")
     except Exception as e:
         data_string = frappe.as_json(order)
-        add_comment_to_job(log, f"Something went wrong: {e}, insert data: {data_string}")
+        add_comment_to_job(
+            log, f"Something went wrong: {e}, insert data: {data_string}")
 
 #################################################################################################
 

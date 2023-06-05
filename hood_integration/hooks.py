@@ -63,8 +63,8 @@ app_license = "MIT"
 # Installation
 # ------------
 
-# before_install = "hood_integration.install.before_install"
-# after_install = "hood_integration.install.after_install"
+after_uninstall = "hood_integration.hood_integration.scheduler.after_uninstall.uninstall"
+after_install = "hood_integration.hood_integration.scheduler.after_install.install"
 
 # Uninstallation
 # ------------
@@ -113,23 +113,11 @@ app_license = "MIT"
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-#	"all": [
-#		"hood_integration.tasks.all"
-#	],
-#	"daily": [
-#		"hood_integration.tasks.daily"
-#	],
-#	"hourly": [
-#		"hood_integration.tasks.hourly"
-#	],
-#	"weekly": [
-#		"hood_integration.tasks.weekly"
-#	],
-#	"monthly": [
-#		"hood_integration.tasks.monthly"
-#	],
-# }
+scheduler_events = {
+	"hourly": [
+		"hood_integration.hood_integration.scheduler.hood.get_orders"
+	]
+}
 
 # Testing
 # -------

@@ -58,10 +58,11 @@ def cancel_single_job(jobName: str, methodPath: str, queue: str):
 
 
 def add_comment_to_job(reference, comment):
-    frappe.get_doc({
-        "doctype": "Comment",
-        "comment_type": "Info",
-        "reference_doctype": "Scheduled Job Log",
-        "reference_name": reference.name,
-        "content": comment
-    }).insert(ignore_permissions=True)
+    if reference is not None:
+        frappe.get_doc({
+            "doctype": "Comment",
+            "comment_type": "Info",
+            "reference_doctype": "Scheduled Job Log",
+            "reference_name": reference.name,
+            "content": comment
+        }).insert(ignore_permissions=True)
