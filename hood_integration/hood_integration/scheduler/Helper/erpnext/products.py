@@ -1,5 +1,6 @@
 import frappe
 from datetime import datetime, timedelta
+from hood_integration.hood_integration.scheduler.Helper.exceptions import CustomException
 from hood_integration.hood_integration.scheduler.Helper.jobs import add_comment_to_job
 
 
@@ -23,7 +24,7 @@ class Products:
         else:
             return False
         
-    def __add_days_to_date(po_date, days_to_add:int):
+    def __add_days_to_date(self,po_date, days_to_add:int):
         datetime_obj = datetime.strptime(po_date, "%Y-%m-%d")
         new_date = datetime_obj + timedelta(days=days_to_add)
         new_date_str = new_date.strftime("%Y-%m-%d")
@@ -69,8 +70,8 @@ class Products:
         product = item.find("item")
         ean = product.find("ean").text
         
-        delivery_days = frappe.get_doc("Item",{"item_code": ean},"lead_time_days")
-        delivery_date = self.__add_days_to_date(po_date,int(delivery_days))
+        delivery_days =  frappe.db.get_value("Item",{"item_code": ean},"lead_time_days")
+        delivery_date = self.__add_days_to_date(po_date,delivery_days)
         
             
         count += 1

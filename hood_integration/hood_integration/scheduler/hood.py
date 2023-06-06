@@ -15,11 +15,11 @@ def get_orders():
     add_comment_to_job(last_log,f"Start process at: {datetime.now()} ")
         
     if creditionals.exist():
-        orders_xml = get_orders_form_hood(datefrom,dateto)
+        orders_xml = get_orders_form_hood(datefrom,dateto,last_log)
         if orders_xml != None:
             add_comment_to_job(last_log,f"List of orders retrieved from date {datefrom} to date {dateto}: {str(get_list_id(orders_xml))} ")
             root = ET.fromstring(orders_xml)
             for order in root.findall('.//order'):
-                set_job_for_order_async(f"hood.get_order={id}",f"hood_integration.hood_integration.scheduler.Helper.orders.get_order_form_hood_by_id","default",order,last_log)
+                get_order_form_hood_by_id(order,last_log)
     else:
         add_comment_to_job(last_log,f"No configuration for the application...")

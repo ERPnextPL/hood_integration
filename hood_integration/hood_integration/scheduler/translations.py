@@ -37,8 +37,8 @@ class translations:
                 "translated_text": "Liczba dni wstecz"
             },
             {
-                "source_text": "Kaufland Settings",
+                "source_text": "Hood Settings",
                 "language": "pl",
-                "translated_text": "Ustawienia Kaufland"
+                "translated_text": "Ustawienia Hood"
             }
         ]

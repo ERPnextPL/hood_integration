@@ -30,9 +30,9 @@ class Integration:
         new_link = {
             "hidden": 0,
             "is_query_report": 0,
-            "label": "Kaufland Settings",
+            "label": "Hood Settings",
             "link_count": 0,
-            "link_to": "Kaufland Setings",
+            "link_to": "Hood Settings",
             "link_type": "DocType",
             "onboard": 0,
             "type": "Link"
@@ -48,7 +48,7 @@ class Integration:
         workspace = frappe.get_doc("Workspace", {"name": "ERPNext Integrations"})
         workspace_links = workspace.get("links") or []
         for link in workspace_links:
-            if link.get("label") == "Kaufland Settings":
+            if link.get("label") == "Hood Settings":
                 workspace.links.remove(link)
                 break
 

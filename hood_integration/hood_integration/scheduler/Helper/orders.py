@@ -95,7 +95,7 @@ def get_list_id(xml_str):
     return order_ids
 
 
-def get_orders_form_hood(dateFrom: datetime, dateTo: datetime):
+def get_orders_form_hood(dateFrom: datetime, dateTo: datetime,log):
     uri = f'https://www.hood.de/api.htm'
     try:
         response = requests.post(
@@ -114,8 +114,7 @@ def get_order_form_hood_by_id(order, log = None):
     
     idOrder = order.find('details').find("orderID").text
     if not order_exist(idOrder, log):
-        set_job_async(jobName=f"ErpNext.CreateNewSalesOrder",
-                      methodPath=f"hood_integration.hood_integration.scheduler.Helper.orders.create_order_from_hood_data", queue="default", data=order, log=log)
+        create_order_from_hood_data(order,log)
     else:
         add_comment_to_job(log, f"No data for order {idOrder}")    
    
