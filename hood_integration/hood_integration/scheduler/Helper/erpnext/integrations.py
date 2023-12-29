@@ -1,7 +1,6 @@
 import frappe
 
 class IntegrationMenu:
-    @staticmethod
     def add_links(self):
         try:
             IntegrationMenu.__add_link_to_erpnext_integrations(self)
@@ -9,7 +8,6 @@ class IntegrationMenu:
         except Exception as e:
             print(e)
 
-    @staticmethod
     def delete_links(self):
         try:
             IntegrationMenu.__dellete_link_from_erpnext_integrations(self)
