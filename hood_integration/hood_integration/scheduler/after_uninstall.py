@@ -7,11 +7,11 @@ from hood_integration.hood_integration.scheduler.Helper.jobs import delete_all_j
 
 def uninstall():
     #
-    payment = Payment()
+    # payment = Payment()
     translationsObj = translations()
 
     # delete payments
-    payment.deletePaymentTerm()
+    # payment.deletePaymentTerm()
     
     # delete translations
     translationsObj.delete_translations(translationsObj.get_translation_list())
