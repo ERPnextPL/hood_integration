@@ -2,9 +2,9 @@ import frappe
 
 class IntegrationMenu:
     @staticmethod
-    def add_links():
+    def add_links(self):
         try:
-            IntegrationMenu.__add_link_to_erpnext_integrations()
+            IntegrationMenu.__add_link_to_erpnext_integrations(self)
             print(f"* Adding link to ERPNext Integrations")
         except Exception as e:
             print(e)
@@ -12,7 +12,7 @@ class IntegrationMenu:
     @staticmethod
     def delete_links(self):
         try:
-            IntegrationMenu.__dellete_link_from_erpnext_integrations()
+            IntegrationMenu.__dellete_link_from_erpnext_integrations(self)
             print(f"* Deleting link from ERPNext Integrations")
         except Exception as e:
             print(e)
