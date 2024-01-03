@@ -65,9 +65,8 @@ class Products:
         })
         product.insert()
 
-    def get_sales_order_item_structure(self,item,count,po_date):
+    def get_sales_order_item_structure(self, product, count, po_date):
         
-        product = item.find("item")
         ean = product.find("ean").text
         
         delivery_days =  frappe.db.get_value("Item",{"item_code": ean},"lead_time_days")

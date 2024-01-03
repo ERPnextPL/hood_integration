@@ -154,13 +154,14 @@ def create_order_from_hood_data(order, log=None):
     # product section
     products = Products()
     sales_order_items = []
-    order_items = order.findall('.//orderItems')
-    for item in order_items:
-        product = item.find("item")
+    order_items = order.find(".//orderItems").findall('item')
+    add_comment_to_job(log, f"Item count: {len(order_items)}")
+    for product in order_items:
         if not products.product_exist(product.find("ean").text, log):
             products.create_product(product, log)
         sales_order_items.append(
-            products.get_sales_order_item_structure(item, len(sales_order_items),po_date))
+            products.get_sales_order_item_structure(product, len(sales_order_items),po_date))
+    add_comment_to_job(log, f"Items: {sales_order_items}")
 
     # # first unit
     status_order = details.find("orderStatusActionSeller").text
