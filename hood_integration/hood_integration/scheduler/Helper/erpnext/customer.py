@@ -206,6 +206,7 @@ class Customer:
             "first_name": splited_name[0],
             "last_name": splited_name[1],
             "phone": data.phone,
+            "status": "Open",
             "email_ids": [
                 {
                     "email_id": data.email_id,
