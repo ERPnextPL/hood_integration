@@ -33,6 +33,10 @@ class Customer:
             return customer
         else:
             return None
+        
+    def get_customer(self,customer_name):
+        customer = frappe.get_doc('Customer', customer_name)
+        return customer
 
     def __contact_exist(self,contact_email):
         contact_email = frappe.db.get_value('Contact', {'email_id': contact_email}, 'name')

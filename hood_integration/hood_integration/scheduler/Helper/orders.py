@@ -37,6 +37,10 @@ def createContentStringToGetOrderList(from_date: datetime, to_date: datetime):
     function = ET.SubElement(root, "function")
     function.text = "orderList"
 
+    
+    list_mode = ET.SubElement(root, "listMode")
+    list_mode.text = "extended"
+
     date_range = ET.SubElement(root, "dateRange")
     date_range_type = ET.SubElement(date_range, "type")
     date_range_type.text = "orderDate"
@@ -70,6 +74,26 @@ def CreateContentStringToGetItemDetail(itemId):
     account_pass.text = password
     function = ET.SubElement(root, "function")
     function.text = "itemDetail"
+    item_id = ET.SubElement(root, "itemID")
+    item_id.text = itemId
+    return ET.tostring(root, encoding="utf-8", method="xml").decode()
+
+def CreateContentStringToGetItemStatus(itemId):
+    keys = HoodCredentials()
+    name = keys.key
+    password = hash_md5(keys.key_secret)
+    root = ET.Element("api")
+    root.set("type", "public")
+    root.set("version", "2.0")
+    root.set("user", name)
+    root.set("password", password)
+
+    account_name = ET.SubElement(root, "accountName")
+    account_name.text = name
+    account_pass = ET.SubElement(root, "accountPass")
+    account_pass.text = password
+    function = ET.SubElement(root, "function")
+    function.text = "itemStatus"
     item_id = ET.SubElement(root, "itemID")
     item_id.text = itemId
     return ET.tostring(root, encoding="utf-8", method="xml").decode()
@@ -111,7 +135,7 @@ def get_orders_form_hood(dateFrom: datetime, dateTo: datetime,log):
 
 
 def get_order_form_hood_by_id(order, log = None):
-    
+    add_comment_to_job(log, ET.tostring(order, "unicode"))
     idOrder = order.find('details').find("orderID").text
     if not order_exist(idOrder, log):
         create_order_from_hood_data(order,log)
@@ -126,15 +150,6 @@ def create_order_from_hood_data(order, log=None):
     uri = f'https://www.hood.de/api.htm'
     details = order.find('details')
     idOrder = details.find("orderID").text
-
-    try:
-        response = requests.post(uri, data=CreateContentStringToGetItemDetail(idOrder))
-        data = response.content.decode("utf-8")
-        root = ET.fromstring(data)
-    except requests.exceptions.HTTPError as e:
-        add_comment_to_job(log, f"HTTP error: {e}")
-    except requests.exceptions.RequestException as e:
-        add_comment_to_job(log, f"Request error: {e}")
         
     buyer = order.find("buyer")
     date = details.find('date').text[5:-2]
@@ -150,6 +165,44 @@ def create_order_from_hood_data(order, log=None):
         customer_name = customer.create_customer(order, log)
     else:
         customer_name = customer.get_customer_name(buyer.find("email").text)
+        if customer_doc.mobile_no != buyer.find("phone").text:
+            try:
+                contact = frappe.get_doc('Contact', f"{customer_name}-{customer_name}")
+                contact.mobile_no = buyer.find("phone").text
+                if len(contact.phone_nos) > 0:
+                    contact.phone_nos[0].mobile_no = buyer.find("phone").text
+                contact.save()
+                frappe.db.commit()
+
+                #contact_phone = frappe.db.get_value('Contact Phone', {'parent': f"{customer_name}-{customer_name}"}, 'name')
+
+                #frappe.db.set_value('Contact Phone', contact_phone, 'phone', buyer.find("phone").text)
+                #frappe.db.commit()
+                #frappe.db.set_value('Contact', f"{customer_name}-{customer_name}", 'mobile_no', buyer.find("phone").text)
+                #frappe.db.commit()
+
+                billing_address = frappe.db.get_list('Address',
+                    filters={
+                        'address_title': customer_name,
+                        'is_primary_address': 1
+                    },
+                    fields=['name'],
+                    as_list=True
+                )
+
+                if len(billing_address) > 0:
+                    billing = frappe.get_doc("Address", billing_address[0])
+                    billing.phone = buyer.find("phone").text
+                    billing.save()
+                    frappe.db.commit()
+
+                customer_doc = frappe.get_doc("Customer", customer_name)
+                customer_doc.mobile_no = buyer.find("phone").text
+                customer_doc.save()
+                frappe.db.commit()
+            except Exception as e:
+                add_comment_to_job(f"Update phone number failed: {e}")
+
 
     # product section
     products = Products()
@@ -157,11 +210,21 @@ def create_order_from_hood_data(order, log=None):
     order_items = order.find(".//orderItems").findall('item')
     add_comment_to_job(log, f"Item count: {len(order_items)}")
     for product in order_items:
+        try:
+            response = requests.post(uri, data=CreateContentStringToGetItemDetail(product.find("itemID").text))
+            data = response.content.decode("utf-8")
+            root = ET.fromstring(data)
+            #add_comment_to_job(log, f"ItemId: {product.find('itemID').text}")
+            #add_comment_to_job(log, f"Item Data: {data}")
+        except requests.exceptions.HTTPError as e:
+            add_comment_to_job(log, f"HTTP error: {e}")
+        except requests.exceptions.RequestException as e:
+            add_comment_to_job(log, f"Request error: {e}")
         if not products.product_exist(product.find("ean").text, log):
             products.create_product(product, log)
         sales_order_items.append(
             products.get_sales_order_item_structure(product, len(sales_order_items),po_date))
-    add_comment_to_job(log, f"Items: {sales_order_items}")
+    #add_comment_to_job(log, f"Items: {sales_order_items}")
 
     # # first unit
     status_order = details.find("orderStatusActionSeller").text
