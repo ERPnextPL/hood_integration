@@ -39,7 +39,7 @@ def createContentStringToGetOrderList(from_date: datetime, to_date: datetime):
 
     
     list_mode = ET.SubElement(root, "listMode")
-    list_mode.text = "extended"
+    list_mode.text = "details"
 
     date_range = ET.SubElement(root, "dateRange")
     date_range_type = ET.SubElement(date_range, "type")
@@ -165,6 +165,7 @@ def create_order_from_hood_data(order, log=None):
         customer_name = customer.create_customer(order, log)
     else:
         customer_name = customer.get_customer_name(buyer.find("email").text)
+        customer_doc = customer.get_customer(customer_name)
         if customer_doc.mobile_no != buyer.find("phone").text:
             try:
                 contact = frappe.get_doc('Contact', f"{customer_name}-{customer_name}")
@@ -224,6 +225,8 @@ def create_order_from_hood_data(order, log=None):
             products.create_product(product, log)
         sales_order_items.append(
             products.get_sales_order_item_structure(product, len(sales_order_items),po_date))
+
+    shipping_cost = details.find("shipCost").text
     #add_comment_to_job(log, f"Items: {sales_order_items}")
 
     # # first unit
@@ -252,6 +255,12 @@ def create_order_from_hood_data(order, log=None):
         "conversion_rate": eur,
         "orderstatus": status_order,
         "items": sales_order_items,
+        "taxes": [{
+            "charge_type": "Actual",
+            "account_head": "5205 - Koszty dostaw i przesyłek - Mebli",
+            "description": "Koszty dostaw i przesyłek",
+            "tax_amount": shipping_cost
+        }],
         "payment_schedule": [{
             "idx": 1,
             "due_date": po_date,
