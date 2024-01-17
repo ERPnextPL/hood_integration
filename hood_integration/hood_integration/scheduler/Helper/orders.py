@@ -148,6 +148,7 @@ def get_order_form_hood_by_id(order, log = None):
 
 def create_order_from_hood_data(order, log=None):
     uri = f'https://www.hood.de/api.htm'
+    print(ET.tostring(order, encoding='unicode'))
     details = order.find('details')
     idOrder = details.find("orderID").text
         
