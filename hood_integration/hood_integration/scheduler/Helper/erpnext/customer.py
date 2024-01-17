@@ -1,7 +1,6 @@
 import frappe
 from hood_integration.hood_integration.scheduler.Helper.jobs import add_comment_to_job
 from countryinfo import CountryInfo
-import mpu
 
 
 class Customer:
@@ -13,8 +12,16 @@ class Customer:
     def __get_contry_name_by_code(self, contry_code):
         return str(CountryInfo(contry_code).name()).lower().capitalize()
 
-    def get_currency_by_code(self, contry_code):
-        return mpu.units.get_currency(contry_code).code
+    def get_currency_by_code(self, country_code):
+        currencyList = CountryInfo(country_code).currencies()
+        if isinstance(currencyList, list):
+            for currency in currencyList:
+                currency = str(currency).upper()
+                if frappe.db.exists("Currency", currency):
+                    return currency
+            return "EUR" # Default if not found
+        else:
+            return str(currencyList).upper()
 
     def customer_exist(self,customer_email, log):
         customer = frappe.db.get_value('Customer', {'email_id': customer_email}, 'name')
