@@ -23,6 +23,16 @@ class Customer:
         else:
             return str(currencyList).upper()
 
+    def get_language_by_code(self, country_code):
+        languageList = CountryInfo(country_code).languages()
+        if isinstance(languageList, list):
+            for language in languageList:
+                if frappe.db.exists("Language", language):
+                    return language
+            return "pl" # Default if not found
+        else:
+            return str(country_code).upper()
+
     def customer_exist(self,customer_email, log):
         customer = frappe.db.get_value('Customer', {'email_id': customer_email}, 'name')
         if customer:
@@ -102,14 +112,13 @@ class Customer:
                 "customer_name": buyer.find("firstName").text + " " + buyer.find("lastName").text,
                 "mobile_no": buyer.find("phone").text,
                 "email_id": buyer.find("email").text,
-                "language": country_code,
+                "language": self.get_language_by_code(country_code),
                 "default_currency": country_currency,
                 "customer_type": self.__get_customer_type(""),
                 "customer_group": self.__get_customer_group(),
                 "territory": self.__get_territory(self.__get_contry_name_by_code(country_code))
             })
 
-            print(customer.as_dict())
             customer.insert()
 
             if frappe.db.exists("Customer", customer.name):
