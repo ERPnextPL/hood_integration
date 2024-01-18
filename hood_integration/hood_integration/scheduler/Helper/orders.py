@@ -256,7 +256,8 @@ def create_order_from_hood_data(order, log=None):
         "po_date": po_date,
         "transaction_date": po_date,
         "selling_price_list": selling.get_price_list(),
-        "currency": currency,
+        #Something went wrong: Accounting Entry for Customer can only be made in currency: EUR
+        "currency": 'EUR',#currency,
         "conversion_rate": eur,
         "orderstatus": status_order,
         "items": sales_order_items,
