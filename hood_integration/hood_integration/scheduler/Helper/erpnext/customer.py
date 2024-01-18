@@ -1,3 +1,4 @@
+import re
 import frappe
 from hood_integration.hood_integration.scheduler.Helper.jobs import add_comment_to_job
 from countryinfo import CountryInfo
@@ -106,11 +107,15 @@ class Customer:
         if buyer is not None and shipping_address is not None:
             country_code = str(buyer.find("countryTwoDigit").text).lower()
             country_currency = self.get_currency_by_code(country_code)
+            phone = ""
+            if buyer.find("phone").text is not None:
+                phone = buyer.find("phone").text
+                phone = re.sub(r'([a-zA-Z]?-?\/?\\?){1,}', '', phone)
 
             customer = frappe.get_doc({
                 "doctype": "Customer",
                 "customer_name": buyer.find("firstName").text + " " + buyer.find("lastName").text,
-                "mobile_no": buyer.find("phone").text,
+                "mobile_no": phone,
                 "email_id": buyer.find("email").text,
                 "language": self.get_language_by_code(country_code),
                 "default_currency": country_currency,
@@ -159,6 +164,9 @@ class Customer:
         phone = ""
         if addressData.find("phone") is not None:
             phone = addressData.find("phone").text
+            print(phone)
+            phone = re.sub(r'([a-zA-Z]?-?\/?\\?){1,}', '', phone)
+            print(phone)
         else:
             phone = ""
 
