@@ -1,4 +1,5 @@
 import json
+import re
 import requests
 import time
 import hmac
@@ -166,12 +167,16 @@ def create_order_from_hood_data(order, log=None):
     else:
         customer_name = customer.get_customer_name(buyer.find("email").text)
         customer_doc = customer.get_customer(customer_name)
-        if customer_doc.mobile_no != buyer.find("phone").text:
+        phone = ""
+        if buyer.find("phone").text is not None:
+            phone = buyer.find("phone").text
+            phone = re.sub(r'([a-zA-Z]?-?\/?\\?){1,}', '', phone)
+        if customer_doc.mobile_no != phone:
             try:
                 contact = frappe.get_doc('Contact', f"{customer_name}-{customer_name}")
-                contact.mobile_no = buyer.find("phone").text
+                contact.mobile_no = phone
                 if len(contact.phone_nos) > 0:
-                    contact.phone_nos[0].mobile_no = buyer.find("phone").text
+                    contact.phone_nos[0].mobile_no = phone
                 contact.save()
                 frappe.db.commit()
 
@@ -193,12 +198,12 @@ def create_order_from_hood_data(order, log=None):
 
                 if len(billing_address) > 0:
                     billing = frappe.get_doc("Address", billing_address[0])
-                    billing.phone = buyer.find("phone").text
+                    billing.phone = phone
                     billing.save()
                     frappe.db.commit()
 
                 customer_doc = frappe.get_doc("Customer", customer_name)
-                customer_doc.mobile_no = buyer.find("phone").text
+                customer_doc.mobile_no = phone
                 customer_doc.save()
                 frappe.db.commit()
             except Exception as e:
