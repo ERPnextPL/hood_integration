@@ -278,6 +278,7 @@ def create_order_from_hood_data(order, log=None):
 
     try:
         order.insert()
+        frappe.db.commit()
         add_comment_to_job(
             log, f"Sales order [{idOrder}] added to {order.name}")
     except Exception as e:

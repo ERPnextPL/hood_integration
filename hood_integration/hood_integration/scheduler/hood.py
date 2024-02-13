@@ -1,3 +1,4 @@
+from xml.dom import minidom
 import frappe
 from datetime import datetime, timedelta
 import xml.etree.ElementTree as ET
@@ -20,6 +21,7 @@ def get_orders():
             add_comment_to_job(last_log,f"List of orders retrieved from date {datefrom} to date {dateto}: {str(get_list_id(orders_xml))} ")
             root = ET.fromstring(orders_xml)
             for order in root.findall('.//order'):
+                print(order)
                 get_order_form_hood_by_id(order,last_log)
     else:
         add_comment_to_job(last_log,f"No configuration for the application...")
