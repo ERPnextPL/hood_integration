@@ -124,7 +124,7 @@ class Customer:
                 "territory": self.__get_territory(self.__get_contry_name_by_code(country_code))
             })
 
-            customer.insert()
+            customer = customer.insert()
 
             if frappe.db.exists("Customer", customer.name):
                 # create address
@@ -205,7 +205,8 @@ class Customer:
             }],
             "is_your_company_address": is_company_address
         })
-        address.insert()
+        
+        address = address.insert()
 
         if address_type == "Billing":
 
@@ -241,7 +242,8 @@ class Customer:
                 }
             ]
         })
-        contact.insert()
+        
+        contact = contact.insert()
 
         # Create a new dynamic link record
         link_doc = frappe.new_doc("Dynamic Link")
