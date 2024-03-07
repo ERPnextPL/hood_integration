@@ -138,6 +138,7 @@ def get_orders_form_hood(dateFrom: datetime, dateTo: datetime,log):
 def get_order_form_hood_by_id(order, log = None):
     add_comment_to_job(log, ET.tostring(order, "unicode"))
     idOrder = order.find('details').find("orderID").text
+    print(idOrder)
     if not order_exist(idOrder, log):
         create_order_from_hood_data(order,log)
     else:
@@ -162,13 +163,14 @@ def create_order_from_hood_data(order, log=None):
 
     # customer section
     customer = Customer()
+    print(buyer.find("email").text)
     if not customer.customer_exist(buyer.find("email").text, log):
         customer_name = customer.create_customer(order, log)
     else:
         customer_name = customer.get_customer_name(buyer.find("email").text)
         customer_doc = customer.get_customer(customer_name)
         phone = ""
-        if buyer.find("phone").text is not None:
+        if type(buyer.find("phone").text) == str:
             phone = buyer.find("phone").text
             phone = re.sub(r'([a-zA-Z]?-?\/?\\?){1,}', '', phone)
         if customer_doc.mobile_no != phone:

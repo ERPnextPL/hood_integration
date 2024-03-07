@@ -12,7 +12,7 @@ def get_orders():
     datefrom = settings.date_after_subtract
     dateto = datetime.now()
 
-    last_log = frappe.get_last_doc("Scheduled Job Log", filters={"scheduled_job_type": "hood.get_orders", "status": "Start"}, order_by="creation desc")
+    last_log = frappe.get_last_doc("Scheduled Job Log", filters={"scheduled_job_type": "hood.get_orders"}, order_by="creation desc")
     add_comment_to_job(last_log,f"Start process at: {datetime.now()} ")
         
     if creditionals.exist():

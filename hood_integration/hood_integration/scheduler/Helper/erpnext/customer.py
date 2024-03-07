@@ -108,7 +108,7 @@ class Customer:
             country_code = str(buyer.find("countryTwoDigit").text).lower()
             country_currency = self.get_currency_by_code(country_code)
             phone = ""
-            if buyer.find("phone").text is not None:
+            if type(buyer.find("phone").text) == str:
                 phone = buyer.find("phone").text
                 phone = re.sub(r'([a-zA-Z]?-?\/?\\?){1,}', '', phone)
 
@@ -162,13 +162,11 @@ class Customer:
         is_company_address = 0
         title = ""
         phone = ""
+        print(addressData.find("phone"))
         if addressData.find("phone") is not None:
             phone = addressData.find("phone").text
-            print(phone)
-            phone = re.sub(r'([a-zA-Z]?-?\/?\\?){1,}', '', phone)
-            print(phone)
-        else:
-            phone = ""
+            if(type(phone) == str):
+                phone = re.sub(r'([a-zA-Z]?-?\/?\\?){1,}', '', phone)
 
         if address_type == "Billing":
             primary = 1
